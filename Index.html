@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Sharing App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #codeDisplay {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #remoteScreen {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <button id="shareButton">Share</button>
+        <button id="enterCodeButton">Enter Code</button>
+        <div id="codeDisplay" class="hidden"></div>
+        <img id="remoteScreen" class="hidden" alt="Remote Screen"/>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById('shareButton').addEventListener('click', async () => {
+            const response = await fetch('/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const code = data.code;
+                document.getElementById('codeDisplay').innerText = `Your Code: ${code}`;
+                document.getElementById('codeDisplay').classList.remove('hidden');
+            } else {
+                alert('Failed to generate code.');
+            }
+        });
+
+        document.getElementById('enterCodeButton').addEventListener('click', async () => {
+            const code = prompt('Enter the 6-digit code:');
+            if (code) {
+                const response = await fetch(`/start-sharing/${code}`, {
+                    method: 'POST',
+                });
+                
+                if (response.ok) {
+                    socket.on('screen_update', (data) => {
+                        if (data.code === code) {
+                            const img = new Image();
+                            img.src = `data:image/jpeg;base64,${data.data}`;
+                            const screenElement = document.getElementById('remoteScreen');
+                            screenElement.src = img.src;
+                            screenElement.classList.remove('hidden');
+                        }
+                    });
+                } else {
+                    alert('Invalid code.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
